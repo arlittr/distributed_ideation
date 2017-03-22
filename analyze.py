@@ -57,7 +57,7 @@ def makeNodelist(tokens,limitPOS=None):
     nodes = []
     for tok in tokens:
         goodPOS = tok.pos_ in GOODPOS 
-        notStopword = tok.orth_ not in stopwords.words('english')c
+        notStopword = tok.orth_ not in stopwords.words('english')
         notSymbol = tok.orth_ not in SYMBOLS
         isMeaningful = tok.prob > probs_cutoff_lower and tok.prob < probs_cutoff_upper
         
@@ -82,7 +82,7 @@ def findMeaningfulCutoffProbability(alltokens):
     return probs_cutoff_lower
 
 
-def buildNetwork(nodesLOL,attr={}):
+def buildNetwork(nodesLOL,attr={},calcEdgeWeight=False):
     #http://stackoverflow.com/questions/10649673/how-to-generate-a-fully-connected-subgraph-from-node-list-using-pythons-network
     #If we have the same word repeated anywhere, we only make one node for it
     G = nx.Graph()
@@ -96,6 +96,11 @@ def buildNetwork(nodesLOL,attr={}):
             for attrname,attrmappings in this_attr.items():
                 nx.set_node_attributes(Gnew,attrname,attrmappings)
         G = nx.compose(G,Gnew)   
+    #set edge weights according to edgeWeights function
+    #TODO: finish writing this. Probably doesn't work yet.    
+    if calcEdgeWeight:
+        for n1,n2 in G.edges():
+            G[n1][n2]['weight'] = calcEdgeWeight(n1,n2)
     return G
 
 def plotPgvGraph(G,filename=None,printRelationships=None,promoteNodeLabels=None):
@@ -179,8 +184,8 @@ if __name__ == '__main__':
     #Read descriptions of concepts (or read in words)
     inputbasepath = '/Volumes/SanDisk/Repos/distributed_ideation/input_data/'
     outputbasepath = '/Volumes/SanDisk/Repos/distributed_ideation/results/'
-    basename = 'Distributed Experience and Novice (superset) clean'
-#     basename = 'Distributed Experience and Novice (superset) clean TEST SAMPLE'
+#    basename = 'Distributed Experience and Novice (superset) clean'
+    basename = 'Distributed Experience and Novice (superset) clean TEST SAMPLE'
 #    basename = 'Group Experienced first and second round (unique set) clean'
     fileextension = '.csv'
     path = inputbasepath + basename + fileextension
