@@ -185,7 +185,13 @@ if __name__ == '__main__':
     inputbasepath = '/Volumes/SanDisk/Repos/distributed_ideation/input_data/'
     outputbasepath = '/Volumes/SanDisk/Repos/distributed_ideation/results/'
 #    basename = 'Distributed Experience and Novice (superset) clean'
-    basename = 'Distributed Experience and Novice (superset) clean TEST SAMPLE'
+#    basename = 'Distributed Experience and Novice (superset) clean TEST SAMPLE'
+#    basename = 'n100 distributed novice - human v3'
+#    basename = 'n100 distributed experienced - human v3'
+#    basename = 'n100 group novice - human v3'
+#    basename = 'n100 group experienced - human v3'
+#    basename = 'n1400 distributed novice'
+    basename = 'n1400 group experienced'
 #    basename = 'Group Experienced first and second round (unique set) clean'
     fileextension = '.csv'
     path = inputbasepath + basename + fileextension
@@ -218,7 +224,7 @@ if __name__ == '__main__':
     G_gn = buildNetwork([n for n in gn['nodeslist']],nodeAttributesDict)
     print('Done making network ' + str(datetime.now()))
     #add attributes to nodes
-    #concept id (from pandas table row?)
+    #concept id (from pandas table row?)a
     #%%
     #calculate modularity
     
