@@ -9,6 +9,7 @@ Created on Wed Jun 14 14:09:45 2017
 import pandas as pd
 import random
 import csv
+import numpy as np
 
 def setCorrect(k,cluster,this_df):
     if list(this_df[this_df['k']==k]['cluster']).count(cluster) >= 2:
@@ -32,12 +33,16 @@ if __name__ == '__main__':
     path = inputbasepath + basename + fileextension
     
     df = pd.read_csv(path)
+    #Sanitize inputs
+    df['idea'] = df.idea.str.replace(r'\n\n', '')
+    df['idea'] = df.idea.str.replace(r'\r\r', '')
     
     #Weave in N control questions per HIT (prob max 4 total Qs per HIT)
     control_questions_per_HIT = 1
     
     #Set min desired number of unique questions in keyfile
-    total_questions = 1000
+    #Sampling will stop after sufficient passes
+    total_questions = 201
     
     #%%
     #make keyfile
@@ -48,28 +53,43 @@ if __name__ == '__main__':
     cluster_max_size = 50
     cluster_ids = set(df[(df['n'] >= cluster_min_size) & (df['n'] <= cluster_max_size)]['cluster'])
     
+#    #uniform sample of selected clusters
+#    k=0
+#    while k < total_questions:
+#        for cluster_id in cluster_ids:
+#            kftemp = df[df['cluster']==cluster_id].sample(n=2)
+#            kftemp = kftemp.append(df[(df['cluster']!=cluster_id) & (df['cluster'].isin(cluster_ids))].sample(n=1))
+#            kftemp['k'] = k
+#            kf = kf.append(kftemp)
+#            k+=1 
     
-    #stratified sample of selected clusters
+    #stratified random sample of selected clusters
     k=0
+    cluster_size_dict = {}
+    for cluster in list(set(df['cluster'])):
+        cluster_size_dict[cluster] = df[df['cluster']==cluster]['n'].iloc[0]
+        cluster_size_dict = {k:v for k,v in cluster_size_dict.items() if k in cluster_ids}
     while k < total_questions:
-        for cluster_id in cluster_ids:
-            kftemp = df[df['cluster']==cluster_id].sample(n=2)
-            kftemp = kftemp.append(df[(df['cluster']!=cluster_id) & (df['cluster'].isin(cluster_ids))].sample(n=1))
-            kftemp['k'] = k
-            kf = kf.append(kftemp)
-            k+=1 
-    
-    #Added improved keyfile later
-#    outpath = outputbasepath + basename + '_mturk_keyfile' + '.csv'
-#    kf.to_csv(outpath,encoding='utf-8')
+        cluster_ids = list(cluster_size_dict.keys())
+        selection_probability = list(cluster_size_dict.values())
+        normalized_selection_probability = [p/sum(selection_probability) for p in selection_probability]
+        cluster_id = np.random.choice(list(cluster_size_dict.keys()),1,p=normalized_selection_probability)[0]
+        kftemp = df[df['cluster']==cluster_id].sample(n=2)
+        kftemp = kftemp.append(df[(df['cluster']!=cluster_id) & (df['cluster'].isin(cluster_ids))].sample(n=1))
+        kftemp['k'] = k
+        kf = kf.append(kftemp)
+        k+=1 
        
     #make inputfile
     #Use headers to control how many questions per HIT
-    headers = ['idea1','idea1a','idea1b','idea2','idea2a','idea2b','idea3','idea3a','idea3b','idea4','idea4a','idea4b']
+    headers = ['idea1','idea1a','idea1b','idea2','idea2a','idea2b','idea3','idea3a','idea3b']
     questions_per_HIT = int(len(headers) / 3)
     items_per_question = 3
-    #Use max_HITs to control how many HITs to generate
-    max_HITs = 100
+    #Use max_questions to control how many unique HITs to generate
+    #If max_questions is greater than the number of HITs supported by the keyfile, error
+    #Right now this needs to be a little less than total_questions because of how control text is weaved in
+    max_questions = 300
+#    assert max_questions<=total_questions-2, "max_HITs must be less than total_questions generated in keyfile"
     mtin = pd.DataFrame()
     for k in set(kf['k']):
         #grab the first idea as the baseline
@@ -101,6 +121,7 @@ if __name__ == '__main__':
     false_answer_indices = list(mtin[mtin['correct']==False].index)
     for low,high in zip(seedvec,[s+(questions_per_HIT-1) for s in seedvec]):
         low = low + 1 #skip first question for weaving control question
+        print(low,high)
         replace_ind = random.sample(false_answer_indices[low:high+1],control_questions_per_HIT)
         replace_inds.append(replace_ind)
         mtin.set_value(replace_ind,'idea',random.sample(control_text,1))
@@ -112,18 +133,21 @@ if __name__ == '__main__':
     mtin['question_list'] = mtin.apply(lambda row: setQuestionList(row['k'],mtin),axis=1)
     
     #%%
-    #Improved keyfile with addition columns
+    #Improved keyfile with additional columns
     outpath = outputbasepath + basename + '_mturk_keyfile' + '.csv'
     mtin.to_csv(outpath,encoding='utf-8')
     
-    idea_data = mtin['idea'].as_matrix()
+#    idea_data = mtin['idea'].as_matrix()
+    idea_data = mtin['idea'].values
     #hack to drop extra data if it won't fit in the given header matrix
     idea_data = idea_data[0:(int(len(idea_data) / len(headers))) * len(headers)]
     idea_data = idea_data.reshape((int(len(idea_data) / len(headers))),len(headers))
-    idea_data = idea_data[0:max_HITs]
+    idea_data = idea_data[0:max_questions]
     
     mturk_infile = pd.DataFrame(data=idea_data,
                                 columns=headers)
     
     outpath = outputbasepath + basename + '_mturk_infile' + '.csv'
     mturk_infile.to_csv(outpath,encoding='utf-8',index=False)
+    
+    print(mturk_infile.iloc[0])
