@@ -43,6 +43,13 @@ def setBatchIsControl(answer,ideas):
     is_control = True in list(key_df[key_df['question_list_str'] == str(ideas)]['is_control'])
     return is_control
 
+def setBatchIsNaive(answer,ideas):
+    #For each question, reverse lookup if it was the naive algorithm
+    ideas = list(ideas)
+    #TODO: generalize all 'is_spectral' to 'is_naive'  
+    is_naive = True in list(key_df[key_df['question_list_str'] == str(ideas)]['is_spectral'])
+    return is_naive
+
 def fitBinomialDist(df):
     N = len(list(df['is_correct']))
     p = list(df['is_correct']).count(True) / N
@@ -94,6 +101,10 @@ if __name__ == '__main__':
     for k,v in answer_input_mapping.items():
         batch_df[k+'_is_control'] = batch_df.apply(lambda row: setBatchIsControl(row[k],row[v]),axis=1)
     
+    #set naive algorithm
+    for k,v in answer_input_mapping.items():
+        batch_df[k+'_is_naive_algorithm'] = batch_df.apply(lambda row: setBatchIsNaive(row[k],row[v]),axis=1)
+    
     #split experimental and control into separate dataframes
     stacked_df = pd.DataFrame()
     question_ids = ['1','2','3','4']
@@ -120,7 +131,7 @@ if __name__ == '__main__':
     random_freqs = []
     odds_ratios=np.array([])
     ps=np.array([])
-    nsamples=1000
+    nsamples=100
     for n in range(nsamples):
         sampled_control = list(control_df['is_correct'].sample(frac=1,replace=True))
         sampled_experimental = list(experimental_df['is_correct'].sample(frac=1,replace=True))    
@@ -227,7 +238,7 @@ if __name__ == '__main__':
     #bootstrapping experimental vs random
     odds_ratios=np.array([])
     ps=np.array([])
-    nsamples=1000
+    nsamples=100
     for n in range(nsamples):
         sampled_control = list(control_df['is_correct'].sample(frac=1,replace=True))
         sampled_experimental = list(experimental_df['is_correct'].sample(frac=1,replace=True))
@@ -264,7 +275,7 @@ if __name__ == '__main__':
     #bootstrapping control vs random
     odds_ratios=np.array([])
     ps=np.array([])
-    nsamples=1000
+    nsamples=100
     for n in range(nsamples):
         sampled_control = list(control_df['is_correct'].sample(frac=1,replace=True))
         sampled_experimental = list(experimental_df['is_correct'].sample(frac=1,replace=True))
