@@ -18,7 +18,7 @@ def setCorrect(k,cluster,this_df):
         return False
 
 def setQuestionList(k,this_df):
-    return list(this_df[this_df['k']==k]['idea'])
+    return list(this_df[this_df['k_new']==k]['idea'])
 
 def getControlStatement(control_df):
     return control_df.sample(n=1)
@@ -66,7 +66,7 @@ if __name__ == '__main__':
     
     #Set min desired number of unique questions in keyfile
     #Sampling will stop after sufficient passes
-    total_questions = 2001
+    total_questions = 1001
     
     #%%
     #make keyfile
@@ -117,7 +117,7 @@ if __name__ == '__main__':
     #Use max_questions to control how many unique HITs to generate
     #If max_questions is greater than the number of HITs supported by the keyfile, error
     #Right now this needs to be a little less than total_questions because of how control text is weaved in
-    max_questions = 1900
+    max_questions = 200
 #    assert max_questions<=total_questions-2, "max_HITs must be less than total_questions generated in keyfile"
     mtin = pd.DataFrame()
     for k in set(kf['k']):

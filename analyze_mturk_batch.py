@@ -20,19 +20,25 @@ def setCorrect(k,cluster):
     else:
         return False
     
-def setQuestionList(k):
-    return list(key_df[key_df['k']==k]['idea'])
+#def setQuestionList(k):
+#    return list(key_df[key_df['k']==k]['idea'])
 
 def setBatchCorrect(answer,ideas):
     #For each question, reverse lookup correctness of answer in keyfile
     ideas = list(ideas)
     selected_response = ideas[answer]
-#    print(ideas)
-#    print(selected_response)
+#    print('ideas: ',ideas)
+#    print('selected: ',selected_response)
 #    print(key_df['idea']==selected_response)
 #    print(key_df['question_list_str'] == str(ideas).replace('\\r','\\n'))
 #    print(key_df['question_list_str'].iloc[0])
 #    print(str(ideas).replace('\\r','\\n'))
+    
+    #uncomment these lines to debug issues related to malformed text
+#    print('selected response:')
+#    print(key_df[key_df['idea']==selected_response])
+#    print('correct?:')
+#    print(key_df[key_df['question_list_str'] == str(ideas).replace('\\r','\\n')]['correct'])
     is_correct = key_df[(key_df['idea']==selected_response) & (key_df['question_list_str'] == str(ideas).replace('\\r','\\n'))]['correct'].iloc[0]
 
     return is_correct
@@ -46,7 +52,7 @@ def setBatchIsControl(answer,ideas):
 def setBatchIsNaive(answer,ideas):
     #For each question, reverse lookup if it was the naive algorithm
     ideas = list(ideas)
-    #TODO: generalize all 'is_spectral' to 'is_naive'  
+    #TODO: generalize all 'is_spectral' to 'is_naive' need to mod other file too
     is_naive = True in list(key_df[key_df['question_list_str'] == str(ideas)]['is_spectral'])
     return is_naive
 
@@ -66,7 +72,9 @@ if __name__ == '__main__':
     inputbasepath = '/Volumes/SanDisk/Repos/distributed_ideation/results/mturk_batch_results/'
     outputbasepath = '/Volumes/SanDisk/Repos/distributed_ideation/input_data/mturk_batch_analysis/'
 #    basename = 'Batch_DUMMY_batch_results'
-    basename = 'Batch_2844899_batch_results'
+#    basename = 'Batch_2844899_batch_results'
+    basename = 'Batch_2870121_batch_results'
+
     fileextension = '.csv'
     path = inputbasepath + basename + fileextension
     
@@ -76,7 +84,8 @@ if __name__ == '__main__':
     
     #get corresponding keyfile
 #    keyfile_basename = 'DUMMY res-n1400_dn_mturk_keyfile'
-    keyfile_basename = 'Pilot 1 7 res-n1400_dn_mturk_keyfile'
+#    keyfile_basename = 'Pilot 1 7 res-n1400_dn_mturk_keyfile'
+    keyfile_basename = 'Pilot_2_fixed_questionlist_res-n1400_dn_mturk_keyfile'
     keyfile_path = inputbasepath + keyfile_basename + fileextension
     key_df = pd.read_csv(keyfile_path,encoding='utf-8')
 #    key_df.replace({'\r': '','\n':'','\\r': '','\\n':''}, regex=True, inplace=True)
@@ -85,11 +94,10 @@ if __name__ == '__main__':
     #in batch results, values for answers must be in sequential order (eg idea1a = 1, idea1b = 2) 
     answer_input_mapping = {'Answer.Q1Answer':['Input.idea1','Input.idea1a','Input.idea1b'],
                             'Answer.Q2Answer':['Input.idea2','Input.idea2a','Input.idea2b'],
-                            'Answer.Q3Answer':['Input.idea3','Input.idea3a','Input.idea3b'],
-                            'Answer.Q4Answer':['Input.idea4','Input.idea4a','Input.idea4b']
+                            'Answer.Q3Answer':['Input.idea3','Input.idea3a','Input.idea3b']
                             }
  
-    #prepare question list as lists rather than strings
+    #prepare question list as lists rather than strings, might be redundant
     key_df['question_list_literal'] = key_df['question_list'].apply(lambda x: literal_eval(x))
     key_df['question_list_str'] =  key_df['question_list_literal'].apply(lambda x: str(x))
 
@@ -107,13 +115,13 @@ if __name__ == '__main__':
     
     #split experimental and control into separate dataframes
     stacked_df = pd.DataFrame()
-    question_ids = ['1','2','3','4']
+    question_ids = ['1','2','3']
     for question_id in question_ids:
         temp_df = batch_df.filter(like=question_id) #get questions containing question_id
         temp_df.rename(columns = lambda x: x.replace(question_id,''),inplace=True) #generalize by removing question_id (lets us stack homogenous columns)
         stacked_df = stacked_df.append(temp_df)
      
-    stacked_df.columns=['idea','idea_a','idea_b','answer','is_correct','is_control']
+    stacked_df.columns=['idea','idea_a','idea_b','answer','is_correct','is_control','is_naive']
     control_df = stacked_df[stacked_df['is_control']==True]
     experimental_df = stacked_df[stacked_df['is_control']==False]
    
@@ -161,13 +169,16 @@ if __name__ == '__main__':
     line.set_linestyle('--')
     plt.grid()
     plt.show()
-    plt.hist(ps,bins='auto')#,range=(0,0.2))
+    
+    print('1')
+    plt.hist(ps,range=(0,0.2))#,bins='auto')#,range=(0,0.2))
     plt.title('p-value Frequency Distribution')
     plt.xlabel('p-value')
     plt.ylabel('Frequency')
     plt.grid()
     plt.show()
     
+    print('2')
     plt.hist(experimental_freqs,range=(0,int(experimental_freqs.max())),bins=int(experimental_freqs.max()+1))
     plt.title('Bootstrapped Experimental Binomial Probability Density')
     plt.xlabel('Number Successes')
@@ -175,6 +186,7 @@ if __name__ == '__main__':
     plt.grid()
     plt.show()
     
+    print('3')
     plt.hist(control_freqs,range=(0,int(control_freqs.max())),bins=int(control_freqs.max()+1))
     plt.title('Bootstrapped Control Binomial Probability Density')
     plt.xlabel('Number Successes')
@@ -264,7 +276,7 @@ if __name__ == '__main__':
     line.set_linestyle('--')
     plt.grid()
     plt.show()
-    plt.hist(ps,bins='auto')#,range=(0,0.2))
+    plt.hist(ps,range=(0,0.2))#,bins='auto')#,range=(0,0.2))
     plt.title('p-value Frequency Distribution')
     plt.xlabel('p-value')
     plt.ylabel('Frequency')
@@ -301,7 +313,7 @@ if __name__ == '__main__':
     line.set_linestyle('--')
     plt.grid()
     plt.show()
-    plt.hist(ps,bins='auto')#,range=(0,0.2))
+    plt.hist(ps,range=(0,0.2))#,bins='auto')#,range=(0,0.2))
     plt.title('p-value Frequency Distribution')
     plt.xlabel('p-value')
     plt.ylabel('Frequency')
