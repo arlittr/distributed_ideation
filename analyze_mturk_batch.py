@@ -11,7 +11,6 @@ from ast import literal_eval
 import scipy.stats
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
 
 
 def setCorrect(k,cluster):
@@ -73,30 +72,33 @@ if __name__ == '__main__':
     outputbasepath = '/Volumes/SanDisk/Repos/distributed_ideation/input_data/mturk_batch_analysis/'
 #    basename = 'Batch_DUMMY_batch_results'
 #    basename = 'Batch_2844899_batch_results'
-    basename = 'Batch_2870121_batch_results'
+#    basename = 'Batch_2870121_batch_results'
 #    basename = 'Batch_2872697_batch_results'
     
-
-        
-
     fileextension = '.csv'
-    path = inputbasepath + basename + fileextension
-    
+    basenames = ['Batch_2870121_batch_results',
+                 'Batch_2872697_batch_results'
+                 ]
     #get batch results
-    batch_df = pd.read_csv(path,encoding='utf-8')
-#    batch_df.replace({'\\r': '\\n'}, regex=True, inplace=True)
+    batch_df = pd.DataFrame()
+    for basename in basenames:
+        path = inputbasepath + basename + fileextension
+        batch_df = batch_df.append(pd.read_csv(path,encoding='utf-8'),ignore_index=True)
     
     #get corresponding keyfile
 #    keyfile_basename = 'DUMMY res-n1400_dn_mturk_keyfile'
 #    keyfile_basename = 'Pilot 1 7 res-n1400_dn_mturk_keyfile'
-    keyfile_basename = 'Pilot_2_fixed_questionlist_res-n1400_dn_mturk_keyfile'
+#    keyfile_basename = 'Pilot_2_fixed_questionlist_res-n1400_dn_mturk_keyfile'
 #    keyfile_basename = 'Run_3_fixed_questionlist_res-n1400_dn_mturk_keyfile'
-    keyfile_path = inputbasepath + keyfile_basename + fileextension
-    key_df = pd.read_csv(keyfile_path,encoding='utf-8')
     
-    
-#    key_df.replace({'\r': '','\n':'','\\r': '','\\n':''}, regex=True, inplace=True)
-    
+    keyfile_basenames = ['Pilot_2_fixed_questionlist_res-n1400_dn_mturk_keyfile',
+                         'Run_3_fixed_questionlist_res-n1400_dn_mturk_keyfile']
+    #get keyfiles
+    key_df = pd.DataFrame()
+    for keyfile_basename in keyfile_basenames:
+        keyfile_path = inputbasepath + keyfile_basename + fileextension
+        key_df = key_df.append(pd.read_csv(keyfile_path,encoding='utf-8'),ignore_index=True)
+            
     #mapping between answer field and selectable answers
     #in batch results, values for answers must be in sequential order (eg idea1a = 1, idea1b = 2) 
     answer_input_mapping = {'Answer.Q1Answer':['Input.idea1','Input.idea1a','Input.idea1b'],
@@ -134,11 +136,6 @@ if __name__ == '__main__':
     naive_df = stacked_df[stacked_df['is_naive']==True]
     experimental_df = stacked_df[(stacked_df['is_control']==False) & (stacked_df['is_naive']==False)]
     
-   
-#    #fit bionomial dist to control
-#    N_control,p_control = fitBinomialDist(control_df)
-#    N_experimental,p_experimental = fitBinomialDist(experimental_df)
-    
     #fisher's exact test
     contingency = [getSuccessFailBinomialDist(control_df),getSuccessFailBinomialDist(experimental_df)]
     odds_ratio_fisher,p_fisher = scipy.stats.fisher_exact(contingency)
@@ -150,7 +147,7 @@ if __name__ == '__main__':
     naive_freqs = []
     odds_ratios=np.array([])
     ps=np.array([])
-    nsamples=1000
+    nsamples=5000
     for n in range(nsamples):
         sampled_control = list(control_df['is_correct'].sample(frac=1,replace=True))
         sampled_experimental = list(experimental_df['is_correct'].sample(frac=1,replace=True))    
