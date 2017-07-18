@@ -74,6 +74,10 @@ if __name__ == '__main__':
 #    basename = 'Batch_DUMMY_batch_results'
 #    basename = 'Batch_2844899_batch_results'
     basename = 'Batch_2870121_batch_results'
+#    basename = 'Batch_2872697_batch_results'
+    
+
+        
 
     fileextension = '.csv'
     path = inputbasepath + basename + fileextension
@@ -86,8 +90,11 @@ if __name__ == '__main__':
 #    keyfile_basename = 'DUMMY res-n1400_dn_mturk_keyfile'
 #    keyfile_basename = 'Pilot 1 7 res-n1400_dn_mturk_keyfile'
     keyfile_basename = 'Pilot_2_fixed_questionlist_res-n1400_dn_mturk_keyfile'
+#    keyfile_basename = 'Run_3_fixed_questionlist_res-n1400_dn_mturk_keyfile'
     keyfile_path = inputbasepath + keyfile_basename + fileextension
     key_df = pd.read_csv(keyfile_path,encoding='utf-8')
+    
+    
 #    key_df.replace({'\r': '','\n':'','\\r': '','\\n':''}, regex=True, inplace=True)
     
     #mapping between answer field and selectable answers
@@ -103,6 +110,7 @@ if __name__ == '__main__':
 
     #set correct
     for k,v in answer_input_mapping.items():
+        print(k,v)
         batch_df[k+'_correct'] = batch_df.apply(lambda row: setBatchCorrect(row[k],row[v]),axis=1)
     
     #set experimental vs control
@@ -117,13 +125,15 @@ if __name__ == '__main__':
     stacked_df = pd.DataFrame()
     question_ids = ['1','2','3']
     for question_id in question_ids:
-        temp_df = batch_df.filter(like=question_id) #get questions containing question_id
+        temp_df = batch_df.filter(regex='(Input|Answer).*'+question_id) #get questions containing question_id
         temp_df.rename(columns = lambda x: x.replace(question_id,''),inplace=True) #generalize by removing question_id (lets us stack homogenous columns)
         stacked_df = stacked_df.append(temp_df)
      
     stacked_df.columns=['idea','idea_a','idea_b','answer','is_correct','is_control','is_naive']
     control_df = stacked_df[stacked_df['is_control']==True]
-    experimental_df = stacked_df[stacked_df['is_control']==False]
+    naive_df = stacked_df[stacked_df['is_naive']==True]
+    experimental_df = stacked_df[(stacked_df['is_control']==False) & (stacked_df['is_naive']==False)]
+    
    
 #    #fit bionomial dist to control
 #    N_control,p_control = fitBinomialDist(control_df)
@@ -137,13 +147,15 @@ if __name__ == '__main__':
     experimental_freqs = []
     control_freqs = []
     random_freqs = []
+    naive_freqs = []
     odds_ratios=np.array([])
     ps=np.array([])
-    nsamples=100
+    nsamples=1000
     for n in range(nsamples):
         sampled_control = list(control_df['is_correct'].sample(frac=1,replace=True))
         sampled_experimental = list(experimental_df['is_correct'].sample(frac=1,replace=True))    
         sampled_random = list(np.random.choice([True,False],size=len(list(experimental_df['is_correct']))))
+        sampled_naive = list(naive_df['is_correct'].sample(frac=1,replace=True))  
         sampled_contingency = [[sampled_experimental.count(True),sampled_control.count(True)],
                                 [sampled_experimental.count(False),sampled_control.count(False)]]
         odds_ratio,p = scipy.stats.fisher_exact(sampled_contingency)
@@ -152,6 +164,7 @@ if __name__ == '__main__':
         experimental_freqs = np.append(experimental_freqs,sampled_experimental.count(True))
         control_freqs = np.append(control_freqs,sampled_control.count(True))
         random_freqs = np.append(random_freqs,sampled_random.count(True))
+        naive_freqs = np.append(naive_freqs,sampled_naive.count(True))
     odds_ratios = odds_ratios[odds_ratios<1e10] #hack for testing with small sample sizes, remove infs
     print('Experimental vs Control Bootstrapping with ',str(nsamples),'samples')
     print('Is experimental distinguishable from control? (Where control is best possible outcome)')
@@ -221,29 +234,35 @@ if __name__ == '__main__':
     plt.grid()
     plt.show()
     
+    normalized_naive = [r/len(sampled_naive) for r in naive_freqs]
+    plt.hist(normalized_naive,bins=sorted(list(set(normalized_naive))),normed=True)
+    plt.xlim(0,1)
+    plt.title('Bootstrapped Naive Binomial Probability Density (Normalized)')
+    plt.xlabel('Number Successes')
+    plt.ylabel('Frequency')
+    plt.grid()
+    plt.show()
+    
     plt.title('Bootstrapped Probability Density (Normalized)')
     plt.xlabel('Number Successes (Normalized)')
     plt.ylabel('Frequency (Normalized)')
     _,_,hatch1 = plt.hist(normalized_experimental,bins=sorted(list(set(normalized_experimental))),normed=True,alpha=0.5) 
     _,_,hatch2 = plt.hist(normalized_control,bins=sorted(list(set(normalized_control))),normed=True,alpha=0.5) 
     _,_,hatch3 = plt.hist(normalized_random,bins=sorted(list(set(normalized_random))),normed=True,alpha=0.5)
-    plt.legend(['Experimental','Control','Random'])
-    plt.xlim(0,1.3)
+    _,_,hatch4 = plt.hist(normalized_naive,bins=sorted(list(set(normalized_naive))),normed=True,alpha=0.5)
+
+    plt.legend(['Experimental','Control','Random','Naive'])
+    plt.xlim(0,1.0)
     for h in hatch1:
-        h.set_hatch('x')
+        h.set_hatch('\\')
     for h in hatch2:
         h.set_hatch('|')
     for h in hatch3:
         h.set_hatch('-')
+    for h in hatch4:
+        h.set_hatch('/')
     plt.show()
-    
-#    noise = np.random.normal(0, 1, (1000, ))
-#    density = scipy.stats.gaussian_kde(noise)
-#    plt.plot(binse,density(binse))
-#    plt.plot(binsc,density(binsc))
-#    plt.plot(binsr,density(binsr))
-#    plt.grid()
-#    plt.show()    
+      
     
     print('============================')
     

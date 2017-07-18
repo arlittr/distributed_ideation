@@ -11,6 +11,7 @@ import random
 import csv
 import numpy as np
 
+
 def setCorrect(k,cluster,this_df):
     if list(this_df[this_df['k']==k]['cluster']).count(cluster) >= 2:
         return True
@@ -45,7 +46,16 @@ def sampleClusters_stratified(this_df,this_kf,cluster_ids):
 def sanitizeInputs(this_df,col):
     this_df[col] = this_df[col].str.replace(r'\n\n', ' ')
     this_df[col] = this_df[col].str.replace(r'\r\r', ' ')
+    #TODO: Delete weird(?) characters
     return this_df
+
+def checkForUnprintable(this_df):
+    #Prints all of the entries in your source file with unprintable chars
+    import string
+    print('Checking for unprintable characters...')
+    printable = set(string.printable)
+    this_df['printable'] = this_df['idea'].apply(lambda s: ''.join(filter(lambda x: x in printable, s)))
+    print(this_df[this_df['printable']!=this_df['idea']])
 
 if __name__ == '__main__':
     inputbasepath = '/Volumes/SanDisk/Repos/distributed_ideation/input_data/topic_clustering_results/'
@@ -108,7 +118,7 @@ if __name__ == '__main__':
 #    #-----
     
     kf = sampleClusters_stratified(df,kf,cluster_ids)
-    
+    checkForUnprintable(kf)
     #make inputfile
     #Use headers to control how many questions per HIT
     headers = ['idea1','idea1a','idea1b','idea2','idea2a','idea2b','idea3','idea3a','idea3b']
@@ -201,7 +211,7 @@ if __name__ == '__main__':
     #%%
     
     #add question order to each item for improved keyfile
-    mtin['question_list'] = mtin.apply(lambda row: setQuestionList(row['k'],mtin),axis=1)
+    mtin['question_list'] = mtin.apply(lambda row: setQuestionList(row['k_new'],mtin),axis=1)
     
     #%%
     #Improved keyfile with additional columns
