@@ -66,6 +66,30 @@ def getSuccessFailBinomialDist(df):
     failures = list(df['is_correct']).count(False)
     
     return successes,failures
+
+def getQuestionSuccessRates(this_df,prompt_columns):
+    #returns a list of tuples of question success rates 
+    #(one tuple per unique question formulation)
+    #only useful if we're replicating the same question
+    #this_df: dataframe containing single treatment
+    #prompt_columns: list containing column headers of all statements that make up a question
+    return list(this_df.groupby(prompt_columns)['is_correct'].aggregate(lambda x: tuple(x)))
+
+def bootstrapMultimodalQuestionDistribution(success_rates,nsamples,normalize=True):
+    #success rates: list of tuples where each tuple contains True and False responses to a replicated question
+    # each tuple represents a different question
+    #nsamples: number of times to resample with replacement
+    sampled_freqs = []
+    for n in range(nsamples):
+        for this_question_rates in success_rates:
+            #sample, make a single flattened list of resampled success rates for each question
+            this_sample = list(np.random.choice(this_question_rates,size=len(this_question_rates)))
+            if normalize:
+                sampled_freqs = np.append(sampled_freqs,np.mean(this_sample))
+            else:
+                sampled_freqs = np.append(sampled_freqs,this_sample.count(True))
+    
+    return sampled_freqs
     
 if __name__ == '__main__':
     inputbasepath = '/Volumes/SanDisk/Repos/distributed_ideation/results/mturk_batch_results/'
@@ -76,9 +100,16 @@ if __name__ == '__main__':
 #    basename = 'Batch_2872697_batch_results'
     
     fileextension = '.csv'
-    basenames = ['Batch_2870121_batch_results',
-                 'Batch_2872697_batch_results'
+   
+    #main dataset
+#    basenames = ['Batch_2870121_batch_results',
+#                 'Batch_2872697_batch_results'
+#                 ]
+    
+    #10 reps trial
+    basenames = ['Run4 10replicates Batch_2874207_batch_results','Batch_2877587_batch_results'
                  ]
+    
     #get batch results
     batch_df = pd.DataFrame()
     for basename in basenames:
@@ -91,8 +122,13 @@ if __name__ == '__main__':
 #    keyfile_basename = 'Pilot_2_fixed_questionlist_res-n1400_dn_mturk_keyfile'
 #    keyfile_basename = 'Run_3_fixed_questionlist_res-n1400_dn_mturk_keyfile'
     
-    keyfile_basenames = ['Pilot_2_fixed_questionlist_res-n1400_dn_mturk_keyfile',
-                         'Run_3_fixed_questionlist_res-n1400_dn_mturk_keyfile']
+    #main dataset
+#    keyfile_basenames = ['Pilot_2_fixed_questionlist_res-n1400_dn_mturk_keyfile',
+#                         'Run_3_fixed_questionlist_res-n1400_dn_mturk_keyfile']
+    
+    #10 reps trial
+    keyfile_basenames = ['Run4 10replicates res-n1400_dn_mturk_keyfile','R5 res-n1400_dn_mturk_keyfile']
+                          
     #get keyfiles
     key_df = pd.DataFrame()
     for keyfile_basename in keyfile_basenames:
@@ -112,7 +148,6 @@ if __name__ == '__main__':
 
     #set correct
     for k,v in answer_input_mapping.items():
-        print(k,v)
         batch_df[k+'_correct'] = batch_df.apply(lambda row: setBatchCorrect(row[k],row[v]),axis=1)
     
     #set experimental vs control
@@ -135,6 +170,59 @@ if __name__ == '__main__':
     control_df = stacked_df[stacked_df['is_control']==True]
     naive_df = stacked_df[stacked_df['is_naive']==True]
     experimental_df = stacked_df[(stacked_df['is_control']==False) & (stacked_df['is_naive']==False)]
+    
+    #%% Analysis of replicates
+    #success rates for each unique question in each treatment
+    control_success_rates = getQuestionSuccessRates(control_df,['idea','idea_a','idea_b'])
+    naive_success_rates = getQuestionSuccessRates(naive_df,['idea','idea_a','idea_b'])
+    experimental_success_rates = getQuestionSuccessRates(experimental_df,['idea','idea_a','idea_b'])
+    
+    #bootstrap
+    nsamples=1000
+    bootstrapped_control_rates = bootstrapMultimodalQuestionDistribution(control_success_rates,nsamples)
+    bootstrapped_naive_rates = bootstrapMultimodalQuestionDistribution(naive_success_rates,nsamples)
+    bootstrapped_experimental_rates = bootstrapMultimodalQuestionDistribution(experimental_success_rates,nsamples)
+
+    #plot
+    plt.title('Bootstrapped Probability Density (Normalized)')
+    plt.xlabel('Number Successes (Normalized)')
+    plt.ylabel('Frequency (Normalized)')
+    _,_,hatch1 = plt.hist(bootstrapped_control_rates,bins=20+1,normed=True,alpha=0.5) 
+    _,_,hatch2 = plt.hist(bootstrapped_naive_rates,bins=20+1,normed=True,alpha=0.5) 
+    _,_,hatch3 = plt.hist(bootstrapped_experimental_rates,bins=20+1,normed=True,alpha=0.5)
+
+    plt.legend(['Control','Naive','Experimental',])
+    plt.xlim(0,1.0)
+    for h in hatch1:
+        h.set_hatch('\\')
+    for h in hatch2:
+        h.set_hatch('|')
+    for h in hatch3:
+        h.set_hatch('-')
+    plt.show()
+    
+    plt.hist(bootstrapped_control_rates,range=(0,int(bootstrapped_control_rates.max())),normed=True,bins=10+1)
+    plt.title('Control Binomial Probability Density\n Hierarchical Bootstrap w/ replicated questions')
+    plt.xlabel('Number Successes (normalized)')
+    plt.ylabel('Frequency (normalized)')
+    plt.grid()
+    plt.show()
+    
+    plt.hist(bootstrapped_naive_rates,range=(0,int(bootstrapped_naive_rates.max())),normed=True,bins=10+1)
+    plt.title('Naive Binomial Probability Density\n Hierarchical Bootstrap w/ replicated questions')
+    plt.xlabel('Number Successes (normalized)')
+    plt.ylabel('Frequency (normalized)')
+    plt.grid()
+    plt.show()
+    
+    plt.hist(bootstrapped_experimental_rates,range=(0,int(bootstrapped_experimental_rates.max())),normed=True,bins=10+1)
+    plt.title('Experimental Binomial Probability Density\n Hierarchical Bootstrap w/ replicated questions')
+    plt.xlabel('Number Successes (normalized)')
+    plt.ylabel('Frequency (normalized)')
+    plt.grid()
+    plt.show()
+    
+    #%%Analysis of full clusterings
     
     #fisher's exact test
     contingency = [getSuccessFailBinomialDist(control_df),getSuccessFailBinomialDist(experimental_df)]

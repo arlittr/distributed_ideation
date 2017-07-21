@@ -127,7 +127,7 @@ if __name__ == '__main__':
     #Use max_questions to control how many unique HITs to generate
     #If max_questions is greater than the number of HITs supported by the keyfile, error
     #Right now this needs to be a little less than total_questions because of how control text is weaved in
-    max_questions = 200
+    max_questions = 50
 #    assert max_questions<=total_questions-2, "max_HITs must be less than total_questions generated in keyfile"
     mtin = pd.DataFrame()
     for k in set(kf['k']):
