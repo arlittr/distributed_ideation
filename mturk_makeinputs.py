@@ -60,7 +60,8 @@ def checkForUnprintable(this_df):
 if __name__ == '__main__':
     inputbasepath = '/Volumes/SanDisk/Repos/distributed_ideation/input_data/topic_clustering_results/'
     outputbasepath = '/Volumes/SanDisk/Repos/distributed_ideation/results/mturk/'
-    basename = 'res-n1400_dn'
+    basename = 'n100_dn_human'
+#    basename = 'res-n1400_dn'
 #    basename = 'res-n1400_ge'
     fileextension = '.csv'
     path = inputbasepath + basename + fileextension
@@ -83,11 +84,11 @@ if __name__ == '__main__':
     kf = pd.DataFrame(columns=df.columns)
     
     #restrict cluster size
-    cluster_min_size = 5
+    cluster_min_size = 2
     cluster_max_size = 50
     cluster_ids = set(df[(df['n'] >= cluster_min_size) & (df['n'] <= cluster_max_size)]['cluster'])
     
-#    #uniform sample of selected clusters ------
+#    #uniform sample of selected clusters ------ #Deprecated... using stratified sample instead
 #    k=0
 #    while k < total_questions:
 #        for cluster_id in cluster_ids:
@@ -97,26 +98,7 @@ if __name__ == '__main__':
 #            kf = kf.append(kftemp)
 #            k+=1 
     #-----
-    
-    
-#    #stratified random sample of selected clusters ------
-#    k=0
-#    cluster_size_dict = {}
-#    for cluster in list(set(df['cluster'])):
-#        cluster_size_dict[cluster] = df[df['cluster']==cluster]['n'].iloc[0]
-#        cluster_size_dict = {k:v for k,v in cluster_size_dict.items() if k in cluster_ids}
-#    while k < total_questions:
-#        cluster_ids = list(cluster_size_dict.keys())
-#        selection_probability = list(cluster_size_dict.values())
-#        normalized_selection_probability = [p/sum(selection_probability) for p in selection_probability]
-#        cluster_id = np.random.choice(list(cluster_size_dict.keys()),1,p=normalized_selection_probability)[0]
-#        kftemp = df[df['cluster']==cluster_id].sample(n=2)
-#        kftemp = kftemp.append(df[(df['cluster']!=cluster_id) & (df['cluster'].isin(cluster_ids))].sample(n=1))
-#        kftemp['k'] = k
-#        kf = kf.append(kftemp)
-#        k+=1 
-#    #-----
-    
+        
     kf = sampleClusters_stratified(df,kf,cluster_ids)
     checkForUnprintable(kf)
     #make inputfile
@@ -127,7 +109,7 @@ if __name__ == '__main__':
     #Use max_questions to control how many unique HITs to generate
     #If max_questions is greater than the number of HITs supported by the keyfile, error
     #Right now this needs to be a little less than total_questions because of how control text is weaved in
-    max_questions = 50
+    max_questions = 200
 #    assert max_questions<=total_questions-2, "max_HITs must be less than total_questions generated in keyfile"
     mtin = pd.DataFrame()
     for k in set(kf['k']):
@@ -166,46 +148,47 @@ if __name__ == '__main__':
         mtin.set_value(replace_ind,'idea',random.sample(control_text,1))
         mtin.set_value(replace_ind,'is_control',True)
     
-    #%%
-    #Choose one of the non-control questions, replace all 3 with separate treatment
-    control_question_inds = [int(ind/items_per_question) for i in replace_inds_control for ind in i]
-    #get indices for each element split into questions
-    replaceable_inds = [[i for i in range(low,high+1) if i not in control_question_inds] for low,high in zip(seedvec,[s+(questions_per_HIT-1) for s in seedvec])]
-    replace_inds_otherTreatment = [random.sample(i,1) for i in replaceable_inds]
+    #%% Add another treatment into each HIT (right now hard coded to add spectral cluster results)
     
-    #Read in treatment dataframe
-    spectral_path = '/Volumes/SanDisk/Repos/distributed_ideation/results/mturk/spectral_clusters.csv'
-    spectral_df = pd.read_csv(path)
-    spectral_df = sanitizeInputs(spectral_df,'idea')
-    
-    #generate replacement questions
-    #strategy: follow same process as generating main df questions
-    #   generate full set of alternate treatment questions
-    #   slot them in one at a time
-    spectral_kf = pd.DataFrame(columns=df.columns)
-    spectral_df['n'] = spectral_df.groupby('cluster')['cluster'].transform('count')    #restrict cluster size
-    cluster_min_size = 5
-    cluster_max_size = 50
-    cluster_ids = set(spectral_df[(spectral_df['n'] >= cluster_min_size) & (spectral_df['n'] <= cluster_max_size)]['cluster'])
-    spectral_kf = sampleClusters_stratified(spectral_df,spectral_kf,cluster_ids)
-    spectral_kf['correct'] = spectral_kf.apply(lambda row: setCorrect(row['k'],row['cluster'],spectral_kf),axis=1)
-    spectral_kf['is_spectral'] = True
-    
-    #for each subframe in main dataframe
-    #strategy: match on k_new
-    #slot replacement question into selected indices of main df
-    #strategy: add new is_spectral column and overwrite df on matching indices
-    mtin['is_spectral'] = False
-    for k in replace_inds_otherTreatment:
-        sub_mtin = mtin[mtin['k_new']==k]
-        sub_mtin_spectral = spectral_kf[spectral_kf['k']==k]
-        sub_mtin_spectral.index = sub_mtin.index
-        mtin.update(sub_mtin_spectral)
-        
-    #cleanup
-    #remap 'cluster'
-    #clear 'keywords'
-    mtin.loc[mtin['is_spectral']==True,'keywords'] = None
+#    #Choose one of the non-control questions, replace all 3 with separate treatment
+#    control_question_inds = [int(ind/items_per_question) for i in replace_inds_control for ind in i]
+#    #get indices for each element split into questions
+#    replaceable_inds = [[i for i in range(low,high+1) if i not in control_question_inds] for low,high in zip(seedvec,[s+(questions_per_HIT-1) for s in seedvec])]
+#    replace_inds_otherTreatment = [random.sample(i,1) for i in replaceable_inds]
+#    
+#    #Read in treatment dataframe
+#    spectral_path = '/Volumes/SanDisk/Repos/distributed_ideation/results/mturk/spectral_clusters.csv'
+#    spectral_df = pd.read_csv(path)
+#    spectral_df = sanitizeInputs(spectral_df,'idea')
+#    
+#    #generate replacement questions
+#    #strategy: follow same process as generating main df questions
+#    #   generate full set of alternate treatment questions
+#    #   slot them in one at a time
+#    spectral_kf = pd.DataFrame(columns=df.columns)
+#    spectral_df['n'] = spectral_df.groupby('cluster')['cluster'].transform('count')    #restrict cluster size
+#    cluster_min_size = 5
+#    cluster_max_size = 50
+#    cluster_ids = set(spectral_df[(spectral_df['n'] >= cluster_min_size) & (spectral_df['n'] <= cluster_max_size)]['cluster'])
+#    spectral_kf = sampleClusters_stratified(spectral_df,spectral_kf,cluster_ids)
+#    spectral_kf['correct'] = spectral_kf.apply(lambda row: setCorrect(row['k'],row['cluster'],spectral_kf),axis=1)
+#    spectral_kf['is_spectral'] = True
+#    
+#    #for each subframe in main dataframe
+#    #strategy: match on k_new
+#    #slot replacement question into selected indices of main df
+#    #strategy: add new is_spectral column and overwrite df on matching indices
+#    mtin['is_spectral'] = False
+#    for k in replace_inds_otherTreatment:
+#        sub_mtin = mtin[mtin['k_new']==k]
+#        sub_mtin_spectral = spectral_kf[spectral_kf['k']==k]
+#        sub_mtin_spectral.index = sub_mtin.index
+#        mtin.update(sub_mtin_spectral)
+#        
+#    #cleanup
+#    #remap 'cluster'
+#    #clear 'keywords'
+#    mtin.loc[mtin['is_spectral']==True,'keywords'] = None
     
     
     #%%

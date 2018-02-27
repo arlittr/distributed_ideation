@@ -80,14 +80,25 @@ def bootstrapMultimodalQuestionDistribution(success_rates,nsamples,normalize=Tru
     # each tuple represents a different question
     #nsamples: number of times to resample with replacement
     sampled_freqs = []
+    #some data will likely have been thrown out. Find one uniform resample size for every question.
+    resample_size = max([len(x) for x in success_rates])
+    
     for n in range(nsamples):
         for this_question_rates in success_rates:
             #sample, make a single flattened list of resampled success rates for each question
-            this_sample = list(np.random.choice(this_question_rates,size=len(this_question_rates)))
+            this_sample = list(np.random.choice(this_question_rates,size=resample_size))
             if normalize:
                 sampled_freqs = np.append(sampled_freqs,np.mean(this_sample))
             else:
                 sampled_freqs = np.append(sampled_freqs,this_sample.count(True))
+#    for n in range(nsamples):
+#        for this_question_rates in success_rates:
+#            #sample, make a single flattened list of resampled success rates for each question
+#            this_sample = list(np.random.choice(this_question_rates,size=len(this_question_rates)))
+#            if normalize:
+#                sampled_freqs = np.append(sampled_freqs,np.mean(this_sample))
+#            else:
+#                sampled_freqs = np.append(sampled_freqs,this_sample.count(True))
     
     return sampled_freqs
     
@@ -102,8 +113,12 @@ if __name__ == '__main__':
     fileextension = '.csv'
    
     #main dataset
-#    basenames = ['Batch_2870121_batch_results',
-#                 'Batch_2872697_batch_results'
+#    basenames = ['Batch_2870121_batch_results',    #200 trial 1?
+#                 'Batch_2872697_batch_results'     #200 trial 2?
+#                 ]
+    
+    #humans dataset
+#    basenames = ['Batch_2949610_batch_results'    #human run 1
 #                 ]
     
     #10 reps trial
@@ -125,6 +140,10 @@ if __name__ == '__main__':
     #main dataset
 #    keyfile_basenames = ['Pilot_2_fixed_questionlist_res-n1400_dn_mturk_keyfile',
 #                         'Run_3_fixed_questionlist_res-n1400_dn_mturk_keyfile']
+    
+    #humans dataset
+#    keyfile_basenames = ['HumanRun1 n100_dn_human_mturk_keyfile'    #human run 1
+#                 ]    
     
     #10 reps trial
     keyfile_basenames = ['Run4 10replicates res-n1400_dn_mturk_keyfile','R5 res-n1400_dn_mturk_keyfile']
@@ -158,6 +177,10 @@ if __name__ == '__main__':
     for k,v in answer_input_mapping.items():
         batch_df[k+'_is_naive_algorithm'] = batch_df.apply(lambda row: setBatchIsNaive(row[k],row[v]),axis=1)
     
+#    #hack to remove naive from analysis, just set every _is_naive_algorithm to false
+#    for k,v in answer_input_mapping.items():
+#        batch_df[k+'_is_naive_algorithm'] = False
+    
     #split experimental and control into separate dataframes
     stacked_df = pd.DataFrame()
     question_ids = ['1','2','3']
@@ -167,6 +190,8 @@ if __name__ == '__main__':
         stacked_df = stacked_df.append(temp_df)
      
     stacked_df.columns=['idea','idea_a','idea_b','answer','is_correct','is_control','is_naive']
+#    stacked_df.columns=['idea','idea_a','idea_b','answer','is_correct','is_control']
+
     control_df = stacked_df[stacked_df['is_control']==True]
     naive_df = stacked_df[stacked_df['is_naive']==True]
     experimental_df = stacked_df[(stacked_df['is_control']==False) & (stacked_df['is_naive']==False)]
@@ -208,14 +233,20 @@ if __name__ == '__main__':
     plt.grid()
     plt.show()
     
-    plt.hist(bootstrapped_naive_rates,range=(0,int(bootstrapped_naive_rates.max())),normed=True,bins=10+1)
-    plt.title('Naive Binomial Probability Density\n Hierarchical Bootstrap w/ replicated questions')
+#    plt.hist(bootstrapped_naive_rates,range=(0,int(bootstrapped_naive_rates.max())),normed=True,bins=10+1)
+#    plt.title('Naive Binomial Probability Density\n Hierarchical Bootstrap w/ replicated questions')
+#    plt.xlabel('Number Successes (normalized)')
+#    plt.ylabel('Frequency (normalized)')
+#    plt.grid()
+#    plt.show()
+    
+    plt.hist(bootstrapped_experimental_rates,range=(0,int(bootstrapped_experimental_rates.max())),normed=True,bins=10+1)
+    plt.title('Experimental Binomial Probability Density\n Hierarchical Bootstrap w/ replicated questions')
     plt.xlabel('Number Successes (normalized)')
     plt.ylabel('Frequency (normalized)')
     plt.grid()
     plt.show()
-    
-    plt.hist(bootstrapped_experimental_rates,range=(0,int(bootstrapped_experimental_rates.max())),normed=True,bins=10+1)
+    plt.hist(bootstrapped_experimental_rates,range=(0,int(bootstrapped_experimental_rates.max())),normed=True,bins=np.unique(bootstrapped_experimental_rates))
     plt.title('Experimental Binomial Probability Density\n Hierarchical Bootstrap w/ replicated questions')
     plt.xlabel('Number Successes (normalized)')
     plt.ylabel('Frequency (normalized)')
@@ -319,24 +350,24 @@ if __name__ == '__main__':
     plt.grid()
     plt.show()
     
-    normalized_naive = [r/len(sampled_naive) for r in naive_freqs]
-    plt.hist(normalized_naive,bins=sorted(list(set(normalized_naive))),normed=True)
-    plt.xlim(0,1)
-    plt.title('Bootstrapped Naive Binomial Probability Density (Normalized)')
-    plt.xlabel('Number Successes')
-    plt.ylabel('Frequency')
-    plt.grid()
-    plt.show()
+#    normalized_naive = [r/len(sampled_naive) for r in naive_freqs]
+#    plt.hist(normalized_naive,bins=sorted(list(set(normalized_naive))),normed=True)
+#    plt.xlim(0,1)
+#    plt.title('Bootstrapped Naive Binomial Probability Density (Normalized)')
+#    plt.xlabel('Number Successes')
+#    plt.ylabel('Frequency')
+#    plt.grid()
+#    plt.show()
     
-    plt.title('Bootstrapped Probability Density (Normalized)')
+    plt.title('Human Bins Bootstrapped Probability Density (Normalized)')
     plt.xlabel('Number Successes (Normalized)')
     plt.ylabel('Frequency (Normalized)')
     _,_,hatch1 = plt.hist(normalized_experimental,bins=sorted(list(set(normalized_experimental))),normed=True,alpha=0.5) 
     _,_,hatch2 = plt.hist(normalized_control,bins=sorted(list(set(normalized_control))),normed=True,alpha=0.5) 
     _,_,hatch3 = plt.hist(normalized_random,bins=sorted(list(set(normalized_random))),normed=True,alpha=0.5)
-    _,_,hatch4 = plt.hist(normalized_naive,bins=sorted(list(set(normalized_naive))),normed=True,alpha=0.5)
+#    _,_,hatch4 = plt.hist(normalized_naive,bins=sorted(list(set(normalized_naive))),normed=True,alpha=0.5)
 
-    plt.legend(['Experimental','Control','Random','Naive'])
+    plt.legend(['Experimental','Control','Random'])#,'Naive'])
     plt.xlim(0,1.0)
     for h in hatch1:
         h.set_hatch('\\')
@@ -344,10 +375,10 @@ if __name__ == '__main__':
         h.set_hatch('|')
     for h in hatch3:
         h.set_hatch('-')
-    for h in hatch4:
-        h.set_hatch('/')
+#    for h in hatch4:
+#        h.set_hatch('/')
+    plt.savefig('/Volumes/SanDisk/Repos/distributed_ideation/results/mturk_batch_analysis/mturk_batch_analysis.pdf', format='pdf', dpi=1000)
     plt.show()
-      
     
     print('============================')
     

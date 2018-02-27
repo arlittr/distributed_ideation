@@ -1,0 +1,40 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Mon Nov  6 16:18:58 2017
+
+@author: arlittr
+"""
+
+import pandas as pd
+import csv
+
+if __name__ == '__main__':
+    inputbasepath = '/Volumes/SanDisk/Repos/distributed_ideation/dsta/infiles/completed/Full trial 1/'
+    outputbasepath = '/Volumes/SanDisk/Repos/distributed_ideation/dsta/infiles/completed/Full trial 1/'
+    basename = 'Batch_2997998_batch_results'
+    fileextension = '.csv'
+    path = inputbasepath + basename + fileextension
+    df = pd.read_csv(path)
+    
+    #get control question text
+    control_path = '/Volumes/SanDisk/Repos/distributed_ideation/results/mturk/moby_dick.csv'
+    with open(control_path,'r') as controlTextFile:
+        reader = csv.reader(controlTextFile, dialect='excel')
+        control_text = [r for r in reader][0]
+        
+    #
+    df[['Input.idea1_mask',
+            'Input.idea2_mask',
+            'Input.idea3_mask',
+            'Input.idea4_mask',
+            'Input.idea5_mask']] = df[['Input.idea1',
+            'Input.idea2',
+            'Input.idea3',
+            'Input.idea4',
+            'Input.idea5']].isin(control_text)
+    
+    
+    #write out
+    outpath = outputbasepath + basename + '_with_mask' + '.csv'
+    df.to_csv(outpath,encoding='utf-8')
